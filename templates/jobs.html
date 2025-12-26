@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}AI Model Security Scanner - 작업 목록{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>작업 목록</h1>
+    <p>이전 스캔 작업 내역을 확인하세요</p>
+</div>
+
+<div class="jobs-section">
+    {% if jobs %}
+    <div class="jobs-table-container">
+        <table class="jobs-table">
+            <thead>
+                <tr>
+                    <th>파일명</th>
+                    <th>상태</th>
+                    <th>결과</th>
+                    <th>생성일</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr class="job-row" onclick="window.location='/jobs/{{ job.job_id }}'">
+                    <td class="job-filename">
+                        <span class="file-icon">📄</span>
+                        {{ job.filename }}
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ job.status }}">
+                            {% if job.status == 'queued' %}⏳ 대기중
+                            {% elif job.status == 'running' %}🔄 진행중
+                            {% elif job.status == 'succeeded' %}✅ 완료
+                            {% elif job.status == 'failed' %}❌ 실패
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if job.pass_fail %}
+                        <span class="result-badge result-{{ job.pass_fail | lower }}">
+                            {% if job.pass_fail == 'PASS' %}✓ PASS{% else %}✗ FAIL{% endif %}
+                        </span>
+                        {% else %}
+                        <span class="result-badge result-pending">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="job-date">{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td class="job-actions">
+                        <a href="/jobs/{{ job.job_id }}" class="btn-view" onclick="event.stopPropagation()">상세</a>
+                        <button class="btn-delete"
+                            onclick="event.stopPropagation(); deleteJob('{{ job.job_id }}')">삭제</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>작업 내역이 없습니다</h3>
+        <p>새로운 모델 파일을 업로드하여 보안 스캔을 시작하세요</p>
+        <a href="/" class="btn-primary">스캔 시작</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function deleteJob(jobId) {
+        if (!confirm('이 작업을 삭제하시겠습니까?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/jobs/${jobId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('삭제 실패');
+            }
+        } catch (error) {
+            alert('오류: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

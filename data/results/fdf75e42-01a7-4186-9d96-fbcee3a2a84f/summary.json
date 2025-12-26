@@ -1,0 +1,36 @@
+{
+  "job_id": "fdf75e42-01a7-4186-9d96-fbcee3a2a84f",
+  "filename": "test_model.pkl",
+  "file_extension": ".pkl",
+  "sha256": "c860e377217c8b15e18d3cefd075575ffd000b770ec43080f4bb863ef59bfbae",
+  "file_size": 51,
+  "started_at": "2025-12-26 02:55:53.037727",
+  "finished_at": "2025-12-26 02:55:53.871792",
+  "status": "succeeded",
+  "pass_fail": "PASS",
+  "fail_reason": null,
+  "tools_run": [
+    "modelscan",
+    "picklescan",
+    "aisbom"
+  ],
+  "tool_versions": {
+    "modelscan": "0.8.1",
+    "picklescan": "unknown",
+    "aisbom": "1.0.0"
+  },
+  "total_findings": 0,
+  "findings_by_severity": {},
+  "findings_by_tool": {
+    "modelscan": 0,
+    "picklescan": 0,
+    "aisbom": 0
+  },
+  "top_findings": [],
+  "options": {
+    "enable_picklescan": true,
+    "strict_policy": false,
+    "output_format": "json",
+    "run_aisbom_on_fail": true
+  }
+}

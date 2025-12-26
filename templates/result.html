@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}AI Model Security Scanner - 결과: {{ job.filename }}{% endblock %}
+
+{% block content %}
+<div class="result-header">
+    <a href="/jobs" class="back-link">← 목록으로</a>
+    <h1>스캔 결과</h1>
+</div>
+
+<div class="result-overview">
+    <div class="result-status-card {% if job.pass_fail == 'PASS' %}status-pass{% else %}status-fail{% endif %}">
+        <div class="status-icon">
+            {% if job.pass_fail == 'PASS' %}✓{% else %}✗{% endif %}
+        </div>
+        <div class="status-text">
+            <h2>{{ job.pass_fail or '처리 중' }}</h2>
+            <p>{{ job.fail_reason or '취약점이 발견되지 않았습니다' }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="result-details">
+    <div class="info-card">
+        <h3>📁 파일 정보</h3>
+        <table class="info-table">
+            <tr>
+                <th>파일명</th>
+                <td>{{ job.filename }}</td>
+            </tr>
+            <tr>
+                <th>파일 크기</th>
+                <td>{{ job.file_size | format_size }}</td>
+            </tr>
+            <tr>
+                <th>SHA256</th>
+                <td class="hash-value">{{ job.sha256 }}</td>
+            </tr>
+            <tr>
+                <th>확장자</th>
+                <td>{{ job.file_extension }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="info-card">
+        <h3>⏱️ 실행 정보</h3>
+        <table class="info-table">
+            <tr>
+                <th>Job ID</th>
+                <td class="job-id">{{ job.job_id }}</td>
+            </tr>
+            <tr>
+                <th>시작 시간</th>
+                <td>{{ job.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            <tr>
+                <th>완료 시간</th>
+                <td>{{ job.finished_at.strftime('%Y-%m-%d %H:%M:%S') if job.finished_at else '-' }}</td>
+            </tr>
+            <tr>
+                <th>상태</th>
+                <td>
+                    <span class="status-badge status-{{ job.status }}">
+                        {{ job.status.upper() }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="info-card">
+        <h3>🔧 실행된 도구</h3>
+        <div class="tools-list">
+            {% for tool in job.tools_run %}
+            <div class="tool-item">
+                <span class="tool-name">{{ tool }}</span>
+                <span class="tool-version">v{{ job.tool_versions.get(tool, 'unknown') }}</span>
+                <span class="tool-findings">{{ job.findings_by_tool.get(tool, 0) }} 발견</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="info-card">
+        <h3>📊 발견 요약</h3>
+        <div class="findings-summary">
+            <div class="finding-stat total">
+                <span class="stat-value">{{ job.total_findings }}</span>
+                <span class="stat-label">총 발견</span>
+            </div>
+            {% for severity, count in job.findings_by_severity.items() %}
+            <div class="finding-stat severity-{{ severity | lower }}">
+                <span class="stat-value">{{ count }}</span>
+                <span class="stat-label">{{ severity }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if job.top_findings %}
+<div class="findings-section">
+    <h3>🔍 주요 발견사항 (상위 {{ job.top_findings | length }}개)</h3>
+    <div class="findings-list">
+        {% for finding in job.top_findings %}
+        <div class="finding-item severity-{{ finding.severity | lower }}">
+            <div class="finding-header">
+                <span class="finding-severity">{{ finding.severity }}</span>
+                <span class="finding-tool">{{ finding.tool }}</span>
+            </div>
+            <p class="finding-message">{{ finding.message }}</p>
+            {% if finding.details %}
+            <details class="finding-details">
+                <summary>상세 정보</summary>
+                <pre>{{ finding.details | tojson(indent=2) }}</pre>
+            </details>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="artifacts-section">
+    <h3>📦 다운로드</h3>
+    <div class="artifacts-grid">
+        {% for artifact in artifacts %}
+        <a href="/api/jobs/{{ job.job_id }}/download/{{ artifact.name }}" class="artifact-card">
+            <span class="artifact-icon">
+                {% if artifact.name.endswith('.json') %}📄{% elif artifact.name.endswith('.zip') %}📦{% else %}📁{%
+                endif %}
+            </span>
+            <span class="artifact-name">{{ artifact.name }}</span>
+            <span class="artifact-size">{{ artifact.size }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="json-viewer-section">
+    <h3>📋 결과 JSON</h3>
+    <div class="json-tabs">
+        <button class="json-tab active" data-target="summary">Summary</button>
+        {% for artifact in artifacts %}
+        {% if artifact.name.endswith('.json') and artifact.name != 'summary.json' %}
+        <button class="json-tab" data-target="{{ artifact.name }}">{{ artifact.name | replace('.json', '') }}</button>
+        {% endif %}
+        {% endfor %}
+    </div>
+    <div class="json-content" id="jsonContent">
+        <pre id="jsonPretty">Click a tab to load JSON content</pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabs = document.querySelectorAll('.json-tab');
+        const jsonPretty = document.getElementById('jsonPretty');
+        const jobId = '{{ job.job_id }}';
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', async () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const target = tab.dataset.target;
+                const filename = target === 'summary' ? 'summary.json' : target;
+
+                try {
+                    const response = await fetch(`/api/jobs/${jobId}/download/${filename}`);
+                    const data = await response.json();
+                    jsonPretty.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    jsonPretty.textContent = 'Error loading JSON: ' + error.message;
+                }
+            });
+        });
+
+        // Load summary by default
+        if (tabs.length > 0) {
+            tabs[0].click();
+        }
+    });
+</script>
+{% endblock %}

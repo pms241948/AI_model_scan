@@ -1,0 +1,31 @@
+services:
+  scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-model-scanner
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
+      - MAX_UPLOAD_SIZE=5368709120
+      - MAX_CONCURRENT_JOBS=2
+      - STRICT_POLICY_DEFAULT=true
+      - JOB_RETENTION_DAYS=30
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 512M

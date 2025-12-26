@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}AI Model Security Scanner - 모델 업로드{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1>AI/ML 모델 보안 스캐너</h1>
+    <p>모델 파일을 업로드하여 취약점을 스캔하고 AI-SBOM을 생성하세요</p>
+</div>
+
+<div class="upload-section">
+    <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-content">
+                <div class="dropzone-icon">📁</div>
+                <p class="dropzone-text">파일을 여기에 드래그하거나 클릭하여 선택</p>
+                <p class="dropzone-hint">지원 형식: {{ supported_extensions | join(', ') }}</p>
+                <p class="dropzone-hint">최대 크기: {{ max_upload_size }}</p>
+            </div>
+            <input type="file" id="fileInput" name="file" accept="{{ supported_extensions | join(',') }}" hidden>
+        </div>
+
+        <div class="selected-file" id="selectedFile" style="display: none;">
+            <span class="file-icon">📄</span>
+            <span class="file-name" id="fileName"></span>
+            <span class="file-size" id="fileSize"></span>
+            <button type="button" class="btn-remove" id="removeFile">✕</button>
+        </div>
+
+        <div class="options-section">
+            <h3>스캔 옵션</h3>
+
+            <div class="option-group">
+                <label class="toggle-label">
+                    <input type="checkbox" name="enable_picklescan" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-text">Picklescan 활성화</span>
+                </label>
+                <p class="option-desc">Pickle 계열 파일에 대해 Picklescan으로 추가 검사 수행</p>
+            </div>
+
+            <div class="option-group">
+                <label class="toggle-label">
+                    <input type="checkbox" name="strict_policy" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-text">엄격 정책 (Strict Policy)</span>
+                </label>
+                <p class="option-desc">HIGH/CRITICAL 취약점 탐지 시 FAIL 처리</p>
+            </div>
+
+            <div class="option-group">
+                <label class="toggle-label">
+                    <input type="checkbox" name="run_aisbom_on_fail" checked>
+                    <span class="toggle-slider"></span>
+                    <span class="toggle-text">실패 시에도 SBOM 생성</span>
+                </label>
+                <p class="option-desc">취약점 스캔 실패 시에도 AI-SBOM 생성 수행</p>
+            </div>
+
+            <div class="option-group">
+                <label class="select-label">
+                    <span>출력 형식:</span>
+                    <select name="output_format">
+                        <option value="json">JSON</option>
+                        <option value="zip">ZIP (전체 아카이브)</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn" disabled>
+            <span class="btn-icon">🔍</span>
+            <span class="btn-text">분석 시작</span>
+        </button>
+    </form>
+</div>
+
+<div class="progress-section" id="progressSection" style="display: none;">
+    <div class="progress-container">
+        <div class="progress-spinner"></div>
+        <p class="progress-text">분석 중...</p>
+        <p class="progress-status" id="progressStatus">작업 대기 중</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFile = document.getElementById('selectedFile');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFile = document.getElementById('removeFile');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const progressSection = document.getElementById('progressSection');
+        const progressStatus = document.getElementById('progressStatus');
+
+        // Drag and drop
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect();
+            }
+        });
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                selectedFile.style.display = 'flex';
+                dropzone.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        }
+
+        removeFile.addEventListener('click', () => {
+            fileInput.value = '';
+            selectedFile.style.display = 'none';
+            dropzone.style.display = 'flex';
+            submitBtn.disabled = true;
+        });
+
+        function formatFileSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + ' ' + units[i];
+        }
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(uploadForm);
+
+            // Handle checkboxes
+            formData.set('enable_picklescan', formData.has('enable_picklescan'));
+            formData.set('strict_policy', formData.has('strict_policy'));
+            formData.set('run_aisbom_on_fail', formData.has('run_aisbom_on_fail'));
+
+            submitBtn.disabled = true;
+            progressSection.style.display = 'block';
+            uploadForm.style.display = 'none';
+            progressStatus.textContent = '파일 업로드 중...';
+
+            try {
+                const response = await fetch('/api/jobs', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Upload failed');
+                }
+
+                const data = await response.json();
+                progressStatus.textContent = '분석 진행 중...';
+
+                // Poll for status
+                pollJobStatus(data.job_id);
+            } catch (error) {
+                alert('오류: ' + error.message);
+                progressSection.style.display = 'none';
+                uploadForm.style.display = 'block';
+                submitBtn.disabled = false;
+            }
+        });
+
+        async function pollJobStatus(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`);
+                const data = await response.json();
+
+                if (data.status === 'running' || data.status === 'queued') {
+                    progressStatus.textContent = data.status === 'running' ? '스캔 진행 중...' : '대기열에서 대기 중...';
+                    setTimeout(() => pollJobStatus(jobId), 2000);
+                } else {
+                    // Redirect to result page
+                    window.location.href = `/jobs/${jobId}`;
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+                setTimeout(() => pollJobStatus(jobId), 3000);
+            }
+        }
+    });
+</script>
+{% endblock %}

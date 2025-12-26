@@ -1,0 +1,15 @@
+2025-12-26 02:53:41,709 - ai_model_scanner - INFO - Loaded 0 existing jobs
+2025-12-26 02:53:41,712 - ai_model_scanner - INFO - Started 2 worker tasks
+2025-12-26 02:53:41,712 - ai_model_scanner - INFO - AI Model Security Scanner started
+2025-12-26 02:53:41,712 - ai_model_scanner - INFO - Worker 0 started
+2025-12-26 02:53:41,712 - ai_model_scanner - INFO - Worker 1 started
+2025-12-26 02:55:53,034 - python_multipart.multipart - WARNING - Skipping data after last boundary
+2025-12-26 02:55:53,038 - ai_model_scanner - INFO - Created job fdf75e42-01a7-4186-9d96-fbcee3a2a84f for test_model.pkl
+2025-12-26 02:55:53,038 - ai_model_scanner - INFO - Worker 0 processing job fdf75e42-01a7-4186-9d96-fbcee3a2a84f
+2025-12-26 02:55:53,041 - ai_model_scanner - INFO - Running ModelScan on /data/uploads/fdf75e42-01a7-4186-9d96-fbcee3a2a84f/model.pkl
+2025-12-26 02:55:53,496 - ai_model_scanner - INFO - ModelScan exit code: 0
+2025-12-26 02:55:53,496 - ai_model_scanner - INFO - Running Picklescan on /data/uploads/fdf75e42-01a7-4186-9d96-fbcee3a2a84f/model.pkl
+2025-12-26 02:55:53,868 - ai_model_scanner - INFO - Picklescan exit code: 0
+2025-12-26 02:55:53,869 - ai_model_scanner - INFO - Generating AI-SBOM for /data/uploads/fdf75e42-01a7-4186-9d96-fbcee3a2a84f/model.pkl
+2025-12-26 02:55:53,872 - ai_model_scanner - INFO - Job fdf75e42-01a7-4186-9d96-fbcee3a2a84f completed: PASS
+2025-12-26 02:59:27,718 - ai_model_scanner - INFO - AI Model Security Scanner shutting down
