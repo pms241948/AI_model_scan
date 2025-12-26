@@ -16,7 +16,8 @@ from .models import (
 )
 from .utils import (
     logger, calculate_sha256, get_file_extension,
-    is_pickle_format, save_json, load_json, create_artifacts_zip
+    is_pickle_format, save_json, load_json, create_artifacts_zip,
+    extract_archive_models
 )
 from .scanner import run_modelscan, run_picklescan, generate_ai_sbom, evaluate_policy
 
@@ -93,7 +94,8 @@ class JobManager:
         self,
         file_path: Path,
         original_filename: str,
-        options: JobOptions
+        options: JobOptions,
+        archive_type: str = None
     ) -> str:
         """
         Create a new scan job.
@@ -101,6 +103,84 @@ class JobManager:
         Args:
             file_path: Path to uploaded file
             original_filename: Original filename from upload
+            options: Scan options
+            archive_type: Archive type (zip, tar, tar.gz) or None for regular files
+            
+        Returns:
+            Job ID
+        """
+        job_id = str(uuid.uuid4())
+        
+        # Create job directories
+        upload_dir = config.UPLOADS_DIR / job_id
+        results_dir = config.RESULTS_DIR / job_id
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        results_dir.mkdir(parents=True, exist_ok=True)
+        
+        model_files = []
+        
+        if archive_type:
+            # Move archive to upload_dir first
+            archive_ext = ".tar.gz" if archive_type == "tar.gz" else f".{archive_type}"
+            archive_path = upload_dir / f"archive{archive_ext}"
+            shutil.move(str(file_path), str(archive_path))
+            
+            # Extract model files from archive
+            model_files = extract_archive_models(archive_path, upload_dir, archive_type)
+            
+            if not model_files:
+                shutil.rmtree(upload_dir)
+                shutil.rmtree(results_dir)
+                raise ValueError(f"No model files found in {archive_type.upper()} archive")
+            
+            # Use first file for primary info, but scan all
+            primary_file = model_files[0]
+            original_filename = f"{original_filename} ({len(model_files)} files)"
+        else:
+            # Regular single file
+            internal_filename = f"model{get_file_extension(original_filename)}"
+            job_file_path = upload_dir / internal_filename
+            shutil.move(str(file_path), str(job_file_path))
+            model_files = [job_file_path]
+            primary_file = job_file_path
+        
+        # Calculate file hash for primary/first file
+        file_hash = calculate_sha256(primary_file)
+        total_size = sum(f.stat().st_size for f in model_files)
+        
+        # Create initial summary
+        summary = ScanSummary(
+            job_id=job_id,
+            filename=original_filename,
+            file_extension=get_file_extension(primary_file.name),
+            sha256=file_hash,
+            file_size=total_size,
+            started_at=datetime.now(),
+            status=JobStatus.QUEUED,
+            options=options
+        )
+        
+        self.jobs[job_id] = summary
+        save_json(summary.model_dump(), results_dir / "summary.json")
+        
+        # Queue the job
+        await self.job_queue.put(job_id)
+        logger.info(f"Created job {job_id} for {original_filename}")
+        
+        return job_id
+    
+    async def create_mounted_model_job(
+        self,
+        model_path: str,
+        model_files: List[Path],
+        options: JobOptions
+    ) -> str:
+        """
+        Create a scan job for models in the mounted directory.
+        
+        Args:
+            model_path: Relative path from /models directory
+            model_files: List of absolute paths to model files
             options: Scan options
             
         Returns:
@@ -114,22 +194,35 @@ class JobManager:
         upload_dir.mkdir(parents=True, exist_ok=True)
         results_dir.mkdir(parents=True, exist_ok=True)
         
-        # Move file to job directory
-        internal_filename = f"model{get_file_extension(original_filename)}"
-        job_file_path = upload_dir / internal_filename
-        shutil.move(str(file_path), str(job_file_path))
+        # Create symlinks or copy files (use symlinks for efficiency)
+        job_model_files = []
+        for i, src_file in enumerate(model_files):
+            # Create symlink in upload dir
+            link_name = f"model_{i}{src_file.suffix}"
+            link_path = upload_dir / link_name
+            try:
+                link_path.symlink_to(src_file)
+            except OSError:
+                # Symlink not supported, copy instead
+                shutil.copy2(src_file, link_path)
+            job_model_files.append(link_path)
         
-        # Calculate file hash
-        file_hash = calculate_sha256(job_file_path)
-        file_size = job_file_path.stat().st_size
+        # Use first file for primary info
+        primary_file = model_files[0]
+        file_hash = calculate_sha256(primary_file)
+        total_size = sum(f.stat().st_size for f in model_files)
         
         # Create initial summary
+        display_name = model_path
+        if len(model_files) > 1:
+            display_name = f"{model_path} ({len(model_files)} files)"
+        
         summary = ScanSummary(
             job_id=job_id,
-            filename=original_filename,
-            file_extension=get_file_extension(original_filename),
+            filename=display_name,
+            file_extension=get_file_extension(primary_file.name),
             sha256=file_hash,
-            file_size=file_size,
+            file_size=total_size,
             started_at=datetime.now(),
             status=JobStatus.QUEUED,
             options=options
@@ -140,7 +233,7 @@ class JobManager:
         
         # Queue the job
         await self.job_queue.put(job_id)
-        logger.info(f"Created job {job_id} for {original_filename}")
+        logger.info(f"Created mounted model job {job_id} for {model_path}")
         
         return job_id
     
@@ -158,46 +251,68 @@ class JobManager:
         upload_dir = config.UPLOADS_DIR / job_id
         results_dir = config.RESULTS_DIR / job_id
         
-        # Find model file
-        model_files = list(upload_dir.glob("model.*"))
+        # Find all model files (handles single files, ZIPs, and mounted models)
+        model_files = [
+            f for f in upload_dir.iterdir() 
+            if f.is_file() or f.is_symlink()
+        ]
+        model_files = [
+            f for f in model_files 
+            if get_file_extension(f.name) in config.SUPPORTED_EXTENSIONS
+        ]
+        
         if not model_files:
-            await self._fail_job(job_id, "Model file not found")
+            await self._fail_job(job_id, "No model files found")
             return
         
-        model_file = model_files[0]
         results: List[ToolResult] = []
+        total_modelscan_findings = 0
+        total_picklescan_findings = 0
         
-        # Run ModelScan (always)
-        modelscan_output = results_dir / "modelscan.json"
-        modelscan_result = await asyncio.to_thread(
-            run_modelscan, model_file, modelscan_output
-        )
-        results.append(modelscan_result)
-        summary.tools_run.append("modelscan")
-        summary.tool_versions["modelscan"] = modelscan_result.version
-        summary.findings_by_tool["modelscan"] = modelscan_result.findings_count
-        
-        # Run Picklescan if enabled and file is pickle format
-        if summary.options.enable_picklescan and is_pickle_format(summary.filename):
-            picklescan_output = results_dir / "picklescan.json"
-            picklescan_result = await asyncio.to_thread(
-                run_picklescan, model_file, picklescan_output
+        # Scan each model file
+        for i, model_file in enumerate(model_files):
+            file_suffix = f"_{i}" if len(model_files) > 1 else ""
+            
+            # Run ModelScan
+            modelscan_output = results_dir / f"modelscan{file_suffix}.json"
+            modelscan_result = await asyncio.to_thread(
+                run_modelscan, model_file, modelscan_output
             )
-            results.append(picklescan_result)
-            summary.tools_run.append("picklescan")
-            summary.tool_versions["picklescan"] = picklescan_result.version
-            summary.findings_by_tool["picklescan"] = picklescan_result.findings_count
+            results.append(modelscan_result)
+            total_modelscan_findings += modelscan_result.findings_count
+            
+            if i == 0:
+                summary.tools_run.append("modelscan")
+                summary.tool_versions["modelscan"] = modelscan_result.version
+            
+            # Run Picklescan if enabled and file is pickle format
+            if summary.options.enable_picklescan and is_pickle_format(model_file.name):
+                picklescan_output = results_dir / f"picklescan{file_suffix}.json"
+                picklescan_result = await asyncio.to_thread(
+                    run_picklescan, model_file, picklescan_output
+                )
+                results.append(picklescan_result)
+                total_picklescan_findings += picklescan_result.findings_count
+                
+                if "picklescan" not in summary.tools_run:
+                    summary.tools_run.append("picklescan")
+                    summary.tool_versions["picklescan"] = picklescan_result.version
         
-        # Evaluate policy
+        summary.findings_by_tool["modelscan"] = total_modelscan_findings
+        if total_picklescan_findings > 0 or "picklescan" in summary.tools_run:
+            summary.findings_by_tool["picklescan"] = total_picklescan_findings
+        
+        # Evaluate policy based on all results
         pass_fail, fail_reason = evaluate_policy(results, summary.options.strict_policy)
         summary.pass_fail = pass_fail
         summary.fail_reason = fail_reason
         
-        # Run AIsbom (if policy passes or run_aisbom_on_fail is True)
+        # Run AIsbom on first file (if policy passes or run_aisbom_on_fail is True)
         if pass_fail == "PASS" or summary.options.run_aisbom_on_fail:
+            primary_file = model_files[0]
             aisbom_output = results_dir / "aisbom.json"
             aisbom_result = await asyncio.to_thread(
-                generate_ai_sbom, model_file, aisbom_output, summary.sha256
+                generate_ai_sbom, primary_file, aisbom_output, summary.sha256
             )
             results.append(aisbom_result)
             summary.tools_run.append("aisbom")

@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Models - AI Model Scanner{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📁 Mounted Models</h1>
+    <p class="subtitle">Models mounted at {{ models_dir }}</p>
+</div>
+
+<div class="models-container">
+    {% if models %}
+    <div class="models-actions">
+        <span class="models-count">{{ models|length }} model(s) found</span>
+    </div>
+
+    <div class="models-grid">
+        {% for model in models %}
+        <div class="model-card" data-path="{{ model.path }}">
+            <div class="model-icon">
+                {% if model.type == 'folder' %}
+                📂
+                {% else %}
+                📄
+                {% endif %}
+            </div>
+            <div class="model-info">
+                <h3 class="model-name" title="{{ model.path }}">{{ model.name }}</h3>
+                <div class="model-meta">
+                    <span class="model-size">{{ model.size_formatted }}</span>
+                    {% if model.type == 'folder' %}
+                    <span class="model-count">{{ model.model_count }} files</span>
+                    {% else %}
+                    <span class="model-ext">{{ model.extension }}</span>
+                    {% if model.is_pickle %}
+                    <span class="badge badge-warning">Pickle</span>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="model-actions">
+                <button class="btn btn-primary btn-scan" onclick="scanModel('{{ model.path }}')">
+                    🔍 Scan
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h2>No Models Found</h2>
+        <p>Mount a model directory to <code>{{ models_dir }}</code></p>
+        <div class="code-block">
+            <code>docker compose down</code><br>
+            <code># Edit docker-compose.yml to add your models volume</code><br>
+            <code>volumes:</code><br>
+            <code>  - /path/to/your/models:/models:ro</code><br>
+            <code>docker compose up -d</code>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Scan Modal -->
+<div id="scanModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🔍 Scan Model</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Scanning: <strong id="scanModelPath"></strong></p>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="enablePicklescan" checked>
+                    Enable Picklescan (for pickle-based files)
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="strictPolicy" checked>
+                    Strict Policy
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="runAisbomOnFail" checked>
+                    Generate SBOM even on failure
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmScan()">Start Scan</button>
+        </div>
+    </div>
+</div>
+
+<!-- Progress indicator -->
+<div id="scanProgress" class="progress-overlay" style="display: none;">
+    <div class="progress-content">
+        <div class="spinner"></div>
+        <p>Starting scan...</p>
+    </div>
+</div>
+
+<style>
+    .models-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .models-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 1.5rem;
+    }
+
+    .models-count {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .models-grid {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .model-card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .model-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .model-icon {
+        font-size: 2rem;
+    }
+
+    .model-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .model-name {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .model-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .model-ext {
+        background: var(--bg-dark);
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    .btn-scan {
+        white-space: nowrap;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--card-bg);
+        border-radius: 8px;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h2 {
+        margin: 0 0 0.5rem 0;
+    }
+
+    .empty-state p {
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .code-block {
+        background: var(--bg-dark);
+        padding: 1rem;
+        border-radius: 4px;
+        text-align: left;
+        font-family: monospace;
+        font-size: 0.9rem;
+        display: inline-block;
+    }
+
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-muted);
+        cursor: pointer;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+
+    .progress-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1001;
+    }
+
+    .progress-content {
+        text-align: center;
+        color: white;
+    }
+</style>
+
+<script>
+    let currentModelPath = null;
+
+    function scanModel(path) {
+        currentModelPath = path;
+        document.getElementById('scanModelPath').textContent = path;
+        document.getElementById('scanModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('scanModal').style.display = 'none';
+        currentModelPath = null;
+    }
+
+    async function confirmScan() {
+        closeModal();
+        document.getElementById('scanProgress').style.display = 'flex';
+
+        const formData = new FormData();
+        formData.append('model_path', currentModelPath);
+        formData.append('enable_picklescan', document.getElementById('enablePicklescan').checked);
+        formData.append('strict_policy', document.getElementById('strictPolicy').checked);
+        formData.append('run_aisbom_on_fail', document.getElementById('runAisbomOnFail').checked);
+
+        try {
+            const response = await fetch('/api/models/scan', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                window.location.href = `/jobs/${data.job_id}`;
+            } else {
+                alert('Error: ' + (data.detail || 'Failed to start scan'));
+                document.getElementById('scanProgress').style.display = 'none';
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+            document.getElementById('scanProgress').style.display = 'none';
+        }
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+</script>
+{% endblock %}

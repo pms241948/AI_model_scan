@@ -1,0 +1,60 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:3c4ef39b-00f6-4021-a8fa-8576ce263bd8",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-12-26T06:07:15.248519+00:00",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "ai-model-scanner",
+          "version": "1.0.0",
+          "description": "AI Model Security Scanner SBOM Generator"
+        }
+      ]
+    },
+    "component": {
+      "type": "machine-learning-model",
+      "name": "t2",
+      "version": "1.0.0",
+      "description": "AI/ML model file (pickle)",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c12d88ef8659ef9cfb4bf3d460ac1678c306f7569a66498a71a3f9e60234493d"
+        }
+      ],
+      "properties": [
+        {
+          "name": "model:format",
+          "value": "pickle"
+        },
+        {
+          "name": "model:file_extension",
+          "value": ".pkl"
+        },
+        {
+          "name": "model:file_size",
+          "value": "30"
+        },
+        {
+          "name": "model:created",
+          "value": "2025-12-26T06:07:13.627792+00:00"
+        },
+        {
+          "name": "model:modified",
+          "value": "2025-12-26T06:07:13+00:00"
+        },
+        {
+          "name": "model:serialization",
+          "value": "pickle"
+        }
+      ]
+    }
+  },
+  "components": [],
+  "dependencies": [],
+  "vulnerabilities": []
+}

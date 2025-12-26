@@ -22,7 +22,8 @@ from .models import (
 from .job_manager import job_manager
 from .utils import (
     logger, sanitize_filename, is_supported_format, 
-    get_content_type, format_file_size
+    get_content_type, format_file_size, is_upload_supported,
+    is_archive_file, get_archive_type, list_mounted_models, get_model_files_in_path
 )
 
 
@@ -81,17 +82,18 @@ async def create_job(
     """
     Create a new scan job.
     
-    Upload a model file and start security scanning.
+    Upload a model file or ZIP archive and start security scanning.
+    ZIP archives will be extracted and all model files inside will be scanned.
     """
     # Validate file
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
-    # Check file extension
-    if not is_supported_format(file.filename):
+    # Check file extension (now supports ZIP)
+    if not is_upload_supported(file.filename):
         raise HTTPException(
             status_code=400, 
-            detail=f"Unsupported file format. Supported: {', '.join(config.SUPPORTED_EXTENSIONS)}"
+            detail=f"Unsupported file format. Supported: {', '.join(config.UPLOAD_EXTENSIONS)}"
         )
     
     # Check file size (read in chunks to avoid memory issues)
@@ -105,7 +107,7 @@ async def create_job(
         with os.fdopen(temp_fd, 'wb') as temp_file:
             while chunk := await file.read(8192):
                 total_size += len(chunk)
-                if total_size > config.MAX_UPLOAD_SIZE:
+                if config.MAX_UPLOAD_SIZE > 0 and total_size > config.MAX_UPLOAD_SIZE:
                     raise HTTPException(
                         status_code=413,
                         detail=f"File too large. Maximum size: {format_file_size(config.MAX_UPLOAD_SIZE)}"
@@ -122,10 +124,14 @@ async def create_job(
         
         # Sanitize filename and create job
         safe_filename = sanitize_filename(file.filename)
+        
+        # Handle archive files or regular model files
+        archive_type = get_archive_type(file.filename) if is_archive_file(file.filename) else None
         job_id = await job_manager.create_job(
             file_path=Path(temp_path),
             original_filename=safe_filename,
-            options=options
+            options=options,
+            archive_type=archive_type
         )
         
         temp_path = None  # Ownership transferred to job manager
@@ -213,14 +219,84 @@ async def delete_job(job_id: str):
     raise HTTPException(status_code=404, detail="Job not found")
 
 
+# ============== Mounted Models API ==============
+
+@app.get("/api/models")
+async def list_models():
+    """List all models in the mounted models directory."""
+    try:
+        models = list_mounted_models()
+        return {
+            "models": models,
+            "total": len(models),
+            "models_dir": str(config.MODELS_DIR)
+        }
+    except Exception as e:
+        logger.error(f"Failed to list models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/models/scan")
+async def scan_mounted_model(
+    model_path: str = Form(...),
+    enable_picklescan: bool = Form(True),
+    strict_policy: bool = Form(True),
+    run_aisbom_on_fail: bool = Form(True)
+):
+    """
+    Scan a model from the mounted models directory.
+    
+    Args:
+        model_path: Relative path from /models directory
+    """
+    try:
+        # Get model files in the path
+        model_files = get_model_files_in_path(model_path)
+        
+        if not model_files:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No model files found in: {model_path}"
+            )
+        
+        # Create job options
+        options = JobOptions(
+            enable_picklescan=enable_picklescan,
+            strict_policy=strict_policy,
+            output_format=OutputFormat.JSON,
+            run_aisbom_on_fail=run_aisbom_on_fail
+        )
+        
+        # Create a job for mounted model scanning
+        job_id = await job_manager.create_mounted_model_job(
+            model_path=model_path,
+            model_files=model_files,
+            options=options
+        )
+        
+        return JobCreateResponse(
+            job_id=job_id,
+            status=JobStatus.QUEUED,
+            message=f"Scan job created for {len(model_files)} file(s)"
+        )
+        
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create scan job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ============== Web UI Routes ==============
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Home page with upload form."""
+    max_size_display = "Unlimited" if config.MAX_UPLOAD_SIZE == 0 else format_file_size(config.MAX_UPLOAD_SIZE)
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "max_upload_size": format_file_size(config.MAX_UPLOAD_SIZE),
+        "max_upload_size": max_size_display,
         "supported_extensions": list(config.SUPPORTED_EXTENSIONS)
     })
 
@@ -232,6 +308,17 @@ async def jobs_page(request: Request):
     return templates.TemplateResponse("jobs.html", {
         "request": request,
         "jobs": jobs
+    })
+
+
+@app.get("/models", response_class=HTMLResponse)
+async def models_page(request: Request):
+    """Mounted models browser page."""
+    models = list_mounted_models()
+    return templates.TemplateResponse("models.html", {
+        "request": request,
+        "models": models,
+        "models_dir": str(config.MODELS_DIR)
     })
 
 

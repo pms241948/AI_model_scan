@@ -13,3 +13,50 @@
 2025-12-26 02:55:53,869 - ai_model_scanner - INFO - Generating AI-SBOM for /data/uploads/fdf75e42-01a7-4186-9d96-fbcee3a2a84f/model.pkl
 2025-12-26 02:55:53,872 - ai_model_scanner - INFO - Job fdf75e42-01a7-4186-9d96-fbcee3a2a84f completed: PASS
 2025-12-26 02:59:27,718 - ai_model_scanner - INFO - AI Model Security Scanner shutting down
+2025-12-26 06:00:54,426 - ai_model_scanner - INFO - Loaded 1 existing jobs
+2025-12-26 06:00:54,429 - ai_model_scanner - INFO - Started 2 worker tasks
+2025-12-26 06:00:54,429 - ai_model_scanner - INFO - AI Model Security Scanner started
+2025-12-26 06:00:54,429 - ai_model_scanner - INFO - Worker 0 started
+2025-12-26 06:00:54,429 - ai_model_scanner - INFO - Worker 1 started
+2025-12-26 06:01:17,150 - python_multipart.multipart - WARNING - Skipping data after last boundary
+2025-12-26 06:01:17,158 - ai_model_scanner - INFO - Extracted model file: m1.pkl
+2025-12-26 06:01:17,158 - ai_model_scanner - INFO - Extracted model file: m2.pkl
+2025-12-26 06:01:17,160 - ai_model_scanner - INFO - Created job bc5b54e3-8981-4687-babf-810f1e781fda for test_models.zip (2 files)
+2025-12-26 06:01:17,160 - ai_model_scanner - INFO - Worker 0 processing job bc5b54e3-8981-4687-babf-810f1e781fda
+2025-12-26 06:01:17,161 - ai_model_scanner - INFO - Running ModelScan on /data/uploads/bc5b54e3-8981-4687-babf-810f1e781fda/m1.pkl
+2025-12-26 06:01:17,606 - ai_model_scanner - INFO - ModelScan exit code: 0
+2025-12-26 06:01:17,606 - ai_model_scanner - INFO - Running Picklescan on /data/uploads/bc5b54e3-8981-4687-babf-810f1e781fda/m1.pkl
+2025-12-26 06:01:17,977 - ai_model_scanner - INFO - Picklescan exit code: 0
+2025-12-26 06:01:17,978 - ai_model_scanner - INFO - Running ModelScan on /data/uploads/bc5b54e3-8981-4687-babf-810f1e781fda/m2.pkl
+2025-12-26 06:01:18,405 - ai_model_scanner - INFO - ModelScan exit code: 0
+2025-12-26 06:01:18,405 - ai_model_scanner - INFO - Running Picklescan on /data/uploads/bc5b54e3-8981-4687-babf-810f1e781fda/m2.pkl
+2025-12-26 06:01:18,776 - ai_model_scanner - INFO - Picklescan exit code: 0
+2025-12-26 06:01:18,778 - ai_model_scanner - INFO - Generating AI-SBOM for /data/uploads/bc5b54e3-8981-4687-babf-810f1e781fda/m1.pkl
+2025-12-26 06:01:18,781 - ai_model_scanner - INFO - Job bc5b54e3-8981-4687-babf-810f1e781fda completed: PASS
+2025-12-26 06:02:21,903 - ai_model_scanner - INFO - AI Model Security Scanner shutting down
+2025-12-26 06:07:00,562 - ai_model_scanner - INFO - Loaded 2 existing jobs
+2025-12-26 06:07:00,565 - ai_model_scanner - INFO - Started 2 worker tasks
+2025-12-26 06:07:00,565 - ai_model_scanner - INFO - AI Model Security Scanner started
+2025-12-26 06:07:00,565 - ai_model_scanner - INFO - Worker 0 started
+2025-12-26 06:07:00,566 - ai_model_scanner - INFO - Worker 1 started
+2025-12-26 06:07:13,602 - python_multipart.multipart - WARNING - Skipping data after last boundary
+2025-12-26 06:07:13,626 - ai_model_scanner - INFO - Extracted model file: t1.pkl
+2025-12-26 06:07:13,626 - ai_model_scanner - INFO - Extracted model file: t2.pkl
+2025-12-26 06:07:13,627 - ai_model_scanner - INFO - Created job bee51f39-5b45-4a55-b200-c62d6c29c70a for test_models.tar.gz (2 files)
+2025-12-26 06:07:13,627 - ai_model_scanner - INFO - Worker 0 processing job bee51f39-5b45-4a55-b200-c62d6c29c70a
+2025-12-26 06:07:13,628 - ai_model_scanner - INFO - Running ModelScan on /data/uploads/bee51f39-5b45-4a55-b200-c62d6c29c70a/t2.pkl
+2025-12-26 06:07:14,071 - ai_model_scanner - INFO - ModelScan exit code: 0
+2025-12-26 06:07:14,072 - ai_model_scanner - INFO - Running Picklescan on /data/uploads/bee51f39-5b45-4a55-b200-c62d6c29c70a/t2.pkl
+2025-12-26 06:07:14,442 - ai_model_scanner - INFO - Picklescan exit code: 0
+2025-12-26 06:07:14,443 - ai_model_scanner - INFO - Running ModelScan on /data/uploads/bee51f39-5b45-4a55-b200-c62d6c29c70a/t1.pkl
+2025-12-26 06:07:14,874 - ai_model_scanner - INFO - ModelScan exit code: 0
+2025-12-26 06:07:14,874 - ai_model_scanner - INFO - Running Picklescan on /data/uploads/bee51f39-5b45-4a55-b200-c62d6c29c70a/t1.pkl
+2025-12-26 06:07:15,247 - ai_model_scanner - INFO - Picklescan exit code: 0
+2025-12-26 06:07:15,248 - ai_model_scanner - INFO - Generating AI-SBOM for /data/uploads/bee51f39-5b45-4a55-b200-c62d6c29c70a/t2.pkl
+2025-12-26 06:07:15,251 - ai_model_scanner - INFO - Job bee51f39-5b45-4a55-b200-c62d6c29c70a completed: PASS
+2025-12-26 06:07:43,766 - ai_model_scanner - INFO - AI Model Security Scanner shutting down
+2025-12-26 06:08:32,220 - ai_model_scanner - INFO - Loaded 3 existing jobs
+2025-12-26 06:08:32,224 - ai_model_scanner - INFO - Started 2 worker tasks
+2025-12-26 06:08:32,224 - ai_model_scanner - INFO - AI Model Security Scanner started
+2025-12-26 06:08:32,224 - ai_model_scanner - INFO - Worker 0 started
+2025-12-26 06:08:32,224 - ai_model_scanner - INFO - Worker 1 started

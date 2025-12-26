@@ -15,6 +15,9 @@ class Config:
     RESULTS_DIR = DATA_DIR / "results"
     LOGS_DIR = DATA_DIR / "logs"
     
+    # Models directory (for mounted folder scanning)
+    MODELS_DIR = Path(os.getenv("MODELS_DIR", "/models"))
+    
     # Upload limits
     MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", 5 * 1024 * 1024 * 1024))  # 5GB
     
@@ -44,6 +47,10 @@ class Config:
         ".h5", ".hdf5", ".keras", ".onnx", ".safetensors",
         ".gguf", ".pb", ".tflite", ".mlmodel"
     }
+    
+    # Allowed upload extensions (includes archive formats)
+    ARCHIVE_EXTENSIONS = {".zip", ".tar", ".tar.gz", ".tgz", ".gz"}
+    UPLOAD_EXTENSIONS = SUPPORTED_EXTENSIONS | ARCHIVE_EXTENSIONS
     
     @classmethod
     def ensure_directories(cls):

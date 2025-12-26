@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "findings": [],
+  "raw_output": "----------- SCAN SUMMARY -----------\nScanned files: 1\nInfected files: 0\nDangerous globals: 0\n"
+}
