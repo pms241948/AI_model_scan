@@ -49,7 +49,7 @@ docker images | grep ai_model_scan
 
 예상 출력:
 ```
-ai_model_scan-scanner   latest   abc123def456   2 minutes ago   1.2GB
+ai_model_scan-scanner   latest   abc123def456   2 minutes ago   420MB
 ```
 
 ### 1.3 이미지를 파일로 내보내기
@@ -62,7 +62,7 @@ docker save ai_model_scan-scanner:latest -o ai-model-scanner.tar
 ls -lh ai-model-scanner.tar
 ```
 
-tar 파일 크기는 약 **1~1.5GB**입니다.
+tar 파일 크기는 약 **400~500MB**입니다.
 
 ### 1.4 전송 패키지 준비
 

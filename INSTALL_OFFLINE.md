@@ -49,7 +49,7 @@ docker images | grep ai_model_scan
 
 Expected output:
 ```
-ai_model_scan-scanner   latest   abc123def456   2 minutes ago   1.2GB
+ai_model_scan-scanner   latest   abc123def456   2 minutes ago   420MB
 ```
 
 ### 1.3 Export Image to File
@@ -62,7 +62,7 @@ docker save ai_model_scan-scanner:latest -o ai-model-scanner.tar
 ls -lh ai-model-scanner.tar
 ```
 
-The tar file will be approximately **1-1.5GB**.
+The tar file will be approximately **400-500MB**.
 
 ### 1.4 Prepare Transfer Package
 

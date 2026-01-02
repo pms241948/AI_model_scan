@@ -60,3 +60,14 @@
 2025-12-26 06:08:32,224 - ai_model_scanner - INFO - AI Model Security Scanner started
 2025-12-26 06:08:32,224 - ai_model_scanner - INFO - Worker 0 started
 2025-12-26 06:08:32,224 - ai_model_scanner - INFO - Worker 1 started
+2025-12-31 02:51:58,710 - ai_model_scanner - INFO - Loaded 3 existing jobs
+2025-12-31 02:51:58,714 - ai_model_scanner - INFO - Started 2 worker tasks
+2025-12-31 02:51:58,714 - ai_model_scanner - INFO - AI Model Security Scanner started
+2025-12-31 02:51:58,715 - ai_model_scanner - INFO - Worker 0 started
+2025-12-31 02:51:58,715 - ai_model_scanner - INFO - Worker 1 started
+2025-12-31 02:52:02,770 - ai_model_scanner - INFO - AI Model Security Scanner shutting down
+2026-01-02 04:46:19,658 - ai_model_scanner - INFO - Loaded 3 existing jobs
+2026-01-02 04:46:19,661 - ai_model_scanner - INFO - Started 2 worker tasks
+2026-01-02 04:46:19,661 - ai_model_scanner - INFO - AI Model Security Scanner started
+2026-01-02 04:46:19,661 - ai_model_scanner - INFO - Worker 0 started
+2026-01-02 04:46:19,661 - ai_model_scanner - INFO - Worker 1 started
